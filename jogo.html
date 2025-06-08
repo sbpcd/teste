@@ -1,0 +1,200 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Roleta Tripla de Frutinhas</title>
+  <style>
+    body {
+      text-align: center;
+      font-family: Arial, sans-serif;
+      background: #f8f8ff;
+    }
+    h1 {
+      color: #2c3e50;
+      margin-top: 20px;
+    }
+    canvas {
+      margin: 10px;
+      background-color: #ffffff;
+      border-radius: 50%;
+    }
+    .roletas {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    #btn {
+      margin-top: 20px;
+      padding: 10px 25px;
+      font-size: 18px;
+      background-color: #27ae60;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+    .roleta-container {
+      position: relative;
+      margin: 10px;
+    }
+    .ponteiro {
+      position: absolute;
+      top: -10px;
+      left: 90px;
+      width: 0;
+      height: 0;
+      border-left: 10px solid transparent;
+      border-right: 10px solid transparent;
+      border-bottom: 15px solid red;
+      z-index: 10;
+    }
+    #result {
+      margin-top: 20px;
+      font-size: 20px;
+    }
+  </style>
+</head>
+<body>
+
+<h1>🍒 Roleta Tripla das Frutinhas 🍉</h1>
+
+<audio id="somGiro" src="giro.mp3" preload="auto"></audio>
+<audio id="somVitoria" src="vitoria.mp3" preload="auto"></audio>
+
+<div class="roletas">
+  <div class="roleta-container">
+    <div class="ponteiro"></div>
+    <canvas id="roleta1" width="200" height="200"></canvas>
+  </div>
+  <div class="roleta-container">
+    <div class="ponteiro"></div>
+    <canvas id="roleta2" width="200" height="200"></canvas>
+  </div>
+  <div class="roleta-container">
+    <div class="ponteiro"></div>
+    <canvas id="roleta3" width="200" height="200"></canvas>
+  </div>
+</div>
+
+<button id="btn">Girar</button>
+
+<div id="contador" style="margin-top: 10px; font-weight: bold;">Tentativas: 0 / 10</div>
+
+<div id="result"></div>
+
+<script>
+
+let tentativas = 0;
+const maxTentativas = 10;
+
+const imagens = ["🍒", "🍋", "🍇", "🍉"];
+const cores = ["#fdebd0", "#d6eaf8", "#f9ebea", "#e8f8f5"];
+
+function desenharRoleta(canvas, angulo) {
+  const ctx = canvas.getContext("2d");
+  const radius = canvas.width / 2;
+  const centerX = canvas.width / 2;
+  const centerY = canvas.height / 2;
+  const anguloSetor = 2 * Math.PI / imagens.length;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  for (let i = 0; i < imagens.length; i++) {
+    const angInicio = angulo + i * anguloSetor;
+    const angFim = angInicio + anguloSetor;
+
+    ctx.beginPath();
+    ctx.moveTo(centerX, centerY);
+    ctx.arc(centerX, centerY, radius, angInicio, angFim);
+    ctx.closePath();
+    ctx.fillStyle = cores[i];
+    ctx.fill();
+    ctx.stroke();
+
+    const angMeio = angInicio + anguloSetor / 2;
+    const tx = centerX + Math.cos(angMeio) * (radius * 0.65);
+    const ty = centerY + Math.sin(angMeio) * (radius * 0.65);
+    ctx.font = "40px Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(imagens[i], tx, ty);
+  }
+}
+
+function animarRoleta(canvas, callback) {
+  const duracao = 2000 + Math.random() * 1000;
+  const angFinal = (6 + Math.random() * 4) * 2 * Math.PI;
+  let anguloAtual = 0;
+  let start = null;
+
+  function animar(timestamp) {
+    if (!start) start = timestamp;
+    const progresso = timestamp - start;
+    const t = progresso / duracao;
+    const easing = 1 - Math.pow(1 - t, 3);
+    anguloAtual = easing * angFinal;
+
+    desenharRoleta(canvas, anguloAtual);
+
+    if (t < 1) {
+      requestAnimationFrame(animar);
+    } else {
+      const setor = imagens.length - 1 - Math.floor((anguloAtual % (2 * Math.PI)) / (2 * Math.PI / imagens.length));
+      callback(imagens[setor]);
+    }
+  }
+
+  requestAnimationFrame(animar);
+}
+
+
+document.getElementById("btn").onclick = () => {
+  if (tentativas >= maxTentativas) {
+    alert("Você atingiu o número máximo de tentativas.");
+    return;
+  }
+  tentativas++;
+  document.getElementById("contador").innerText = `Tentativas: ${tentativas} / ${maxTentativas}`;
+
+  const somGiro = document.getElementById("somGiro");
+  somGiro.currentTime = 0;
+  somGiro.play();
+
+  let resultados = [];
+  let finalizados = 0;
+  document.getElementById("result").innerText = "Girando...";
+
+  animarRoleta(document.getElementById("roleta1"), r => {
+    resultados[0] = r;
+    if (++finalizados === 3) verificar();
+  });
+  animarRoleta(document.getElementById("roleta2"), r => {
+    resultados[1] = r;
+    if (++finalizados === 3) verificar();
+  });
+  animarRoleta(document.getElementById("roleta3"), r => {
+    resultados[2] = r;
+    if (++finalizados === 3) verificar();
+  });
+
+  function verificar() {
+    if (resultados[0] === resultados[1] && resultados[1] === resultados[2]) {
+      document.getElementById("result").innerText = "🎉 Parabéns! Você ganhou com " + resultados[0];
+      const somVitoria = document.getElementById("somVitoria");
+      somVitoria.currentTime = 0;
+      somVitoria.play();
+    } else {
+      document.getElementById("result").innerText = "😢 Tente novamente!";
+    }
+  }
+};
+
+["roleta1", "roleta2", "roleta3"].forEach(id => {
+  desenharRoleta(document.getElementById(id), 0);
+});
+</script>
+
+</body>
+</html>
